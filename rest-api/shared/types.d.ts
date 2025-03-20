@@ -1,18 +1,18 @@
-// Define the Task type with necessary fields
 export type Task = {
   taskId: string;
   title: string;
   description: string;
-  status: "pending" | "in-progress" | "completed";
-  createdAt: string;  // ISO date string
-  updatedAt?: string;  // ISO date string (optional)
-  dueDate?: string;  // ISO date string (optional)
-  priority: "low" | "medium" | "high";
+  status: 'pending' | 'in-progress' | 'completed';
+  createdAt: string;
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string; // optional
+  projectId: string; // reference to the Project entity
 };
 
-// Define a query parameter structure for filtering tasks
-export type TaskQueryParams = {
-  status?: string;
-  priority?: string;
-  dueDate?: string;  // ISO date string (optional)
+export type Project = {
+  projectId: string;
+  projectName: string;
+  description: string;
+  status: 'active' | 'completed' | 'archived';
+  createdAt: string;
 };

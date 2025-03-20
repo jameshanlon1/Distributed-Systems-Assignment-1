@@ -1,7 +1,7 @@
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { Task } from "./types";
+import { Task, Project } from "./types";
 
-type Entity = Task;  // UPDATED to Task
+type Entity = Task | Project;  // Updated to include both Task and Project
 
 export const generateItem = (entity: Entity) => {
   return {
