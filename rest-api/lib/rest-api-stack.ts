@@ -6,7 +6,7 @@ import * as custom from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { generateBatch } from "../shared/util";
-import { movies, movieCasts } from "../seed/movies";
+import { tasks, projects } from "../seed/tasks";
 import * as apig from "aws-cdk-lib/aws-apigateway";
 
 
@@ -14,135 +14,170 @@ export class RestAPIStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Tables 
-    const moviesTable = new dynamodb.Table(this, "MoviesTable", {
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      partitionKey: { name: "id", type: dynamodb.AttributeType.NUMBER },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      tableName: "Movies",
-    });
+// Tables
+const tasksTable = new dynamodb.Table(this, "TasksTable", {
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  partitionKey: { name: "taskId", type: dynamodb.AttributeType.STRING }, // Using taskId as partition key
+  removalPolicy: cdk.RemovalPolicy.DESTROY, // Ensures the table is destroyed when the stack is deleted
+  tableName: "Tasks", // Set the table name to "Tasks"
+});
 
-    const movieCastsTable = new dynamodb.Table(this, "MovieCastTable", {
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      partitionKey: { name: "movieId", type: dynamodb.AttributeType.NUMBER },
-      sortKey: { name: "actorName", type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      tableName: "MovieCast",
-    });
+const projectsTable = new dynamodb.Table(this, "ProjectsTable", {
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  partitionKey: { name: "projectId", type: dynamodb.AttributeType.STRING }, // Using projectId as partition key
+  removalPolicy: cdk.RemovalPolicy.DESTROY, // Ensures the table is destroyed when the stack is deleted
+  tableName: "Projects", // Set the table name to "Projects"
+});
 
-    movieCastsTable.addLocalSecondaryIndex({
-      indexName: "roleIx",
-      sortKey: { name: "roleName", type: dynamodb.AttributeType.STRING },
-    });
+// Optional: Add a Local Secondary Index (LSI) for the Tasks table if you need querying by priority (example)
+tasksTable.addLocalSecondaryIndex({
+  indexName: "priorityIx", 
+  sortKey: { name: "priority", type: dynamodb.AttributeType.STRING }, // Allows querying tasks by priority
+});
+
 
 
     
-    // Functions 
-    const getMovieByIdFn = new lambdanode.NodejsFunction(
-      this,
-      "GetMovieByIdFn",
-      {
-        architecture: lambda.Architecture.ARM_64,
-        runtime: lambda.Runtime.NODEJS_18_X,
-        entry: `${__dirname}/../lambdas/getMovieById.ts`,
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: {
-          TABLE_NAME: moviesTable.tableName,
-          CAST_TABLE_NAME: movieCastsTable.tableName,
-          REGION: 'eu-west-1',
-        },
-      }
-      );
+        // Functions
 
-
-
-      const deleteMovieFn = new lambdanode.NodejsFunction(this, "DeleteMovieFn", {
-        architecture: lambda.Architecture.ARM_64,
-        runtime: lambda.Runtime.NODEJS_18_X,
-        entry: `${__dirname}/../lambdas/deleteMovie.ts`,
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: { TABLE_NAME: moviesTable.tableName,
-                       REGION: "eu-west-1",
-         },
-      });
-      
-      const getAllMoviesFn = new lambdanode.NodejsFunction(
-        this,
-        "GetAllMoviesFn",
-        {
+        // Lambda function to get a Task by its ID
+        const getTaskByIdFn = new lambdanode.NodejsFunction(this, "GetTaskByIdFn", {
           architecture: lambda.Architecture.ARM_64,
           runtime: lambda.Runtime.NODEJS_18_X,
-          entry: `${__dirname}/../lambdas/getAllMovies.ts`,
+          entry: `${__dirname}/../lambdas/getTaskById.ts`, // Path to your Lambda function code
           timeout: cdk.Duration.seconds(10),
           memorySize: 128,
           environment: {
-            TABLE_NAME: moviesTable.tableName,
+            TABLE_NAME: tasksTable.tableName, // Use the Tasks table
             REGION: 'eu-west-1',
           },
-        }
-        );
-        
-        new custom.AwsCustomResource(this, "moviesddbInitData", {
-          onCreate: {
-            service: "DynamoDB",
-            action: "batchWriteItem",
-            parameters: {
-              RequestItems: {
-                [moviesTable.tableName]: generateBatch(movies),
-                [movieCastsTable.tableName]: generateBatch(movieCasts),  // Added
-              },
-            },
-            physicalResourceId: custom.PhysicalResourceId.of("moviesddbInitData"), //.of(Date.now().toString()),
-          },
-          policy: custom.AwsCustomResourcePolicy.fromSdkCalls({
-            resources: [moviesTable.tableArn, movieCastsTable.tableArn],  // Includes movie cast
-          }),
         });
+        
+          // Lambda function to get a Project by its ID
+          const getProjectByIdFn = new lambdanode.NodejsFunction(this, "GetProjectByIdFn", {
+            architecture: lambda.Architecture.ARM_64,
+            runtime: lambda.Runtime.NODEJS_18_X,
+            entry: `${__dirname}/../lambdas/getProjectById.ts`, // Path to your Lambda function code
+            timeout: cdk.Duration.seconds(10),
+            memorySize: 128,
+            environment: {
+              TABLE_NAME: projectsTable.tableName, // Use the Projects table
+              REGION: 'eu-west-1',
+            },
+          });
+
+
+     // Lambda function to delete a Task by its ID
+const deleteTaskFn = new lambdanode.NodejsFunction(this, "DeleteTaskFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,
+  entry: `${__dirname}/../lambdas/deleteTask.ts`, // Path to your Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: tasksTable.tableName, // Use the Tasks table
+    REGION: 'eu-west-1',
+  },
+});
+
+// Lambda function to delete a Project by its ID
+const deleteProjectFn = new lambdanode.NodejsFunction(this, "DeleteProjectFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,
+  entry: `${__dirname}/../lambdas/deleteProject.ts`, // Path to your Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: projectsTable.tableName, // Use the Projects table
+    REGION: 'eu-west-1',
+  },
+});
+      
+// Lambda function to get all Tasks
+const getAllTasksFn = new lambdanode.NodejsFunction(this, "GetAllTasksFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,
+  entry: `${__dirname}/../lambdas/getAllTasks.ts`, // Path to your Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: tasksTable.tableName, // Use the Tasks table
+    REGION: 'eu-west-1',
+  },
+});
+
+// Lambda function to get all Projects
+const getAllProjectsFn = new lambdanode.NodejsFunction(this, "GetAllProjectsFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,
+  entry: `${__dirname}/../lambdas/getAllProjects.ts`, // Path to your Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: projectsTable.tableName, // Use the Projects table
+    REGION: 'eu-west-1',
+  },
+});
+        
+new custom.AwsCustomResource(this, "tasksddbInitData", {
+  onCreate: {
+    service: "DynamoDB",
+    action: "batchWriteItem",
+    parameters: {
+      RequestItems: {
+        [tasksTable.tableName]: generateBatch(tasks),  // Added Tasks
+        [projectsTable.tableName]: generateBatch(projects),  // Added Projects
+      },
+    },
+    physicalResourceId: custom.PhysicalResourceId.of("tasksddbInitData"), // Ensures uniqueness during stack creation
+  },
+  policy: custom.AwsCustomResourcePolicy.fromSdkCalls({
+    resources: [tasksTable.tableArn, projectsTable.tableArn],  // Grants access to both tables
+  }),
+});
+
     
         
-    const newMovieFn = new lambdanode.NodejsFunction(this, "AddMovieFn", {
-      architecture: lambda.Architecture.ARM_64,
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: `${__dirname}/../lambdas/addMovie.ts`,
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 128,
-      environment: {
-        TABLE_NAME: moviesTable.tableName,
-        REGION: "eu-west-1",
-      },
-    });
+// Lambda function to add a new Task
+const newTaskFn = new lambdanode.NodejsFunction(this, "AddTaskFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,  // Using Node.js 18.x (you can adjust to Node.js 22.x if needed)
+  entry: `${__dirname}/../lambdas/addTask.ts`, // Path to the Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: tasksTable.tableName, // Use the Tasks table
+    REGION: 'eu-west-1',
+  },
+});
+
+// Lambda function to add a new Project
+const newProjectFn = new lambdanode.NodejsFunction(this, "AddProjectFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,  // Using Node.js 18.x (you can adjust to Node.js 22.x if needed)
+  entry: `${__dirname}/../lambdas/addProject.ts`, // Path to the Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: projectsTable.tableName, // Use the Projects table
+    REGION: 'eu-west-1',
+  },
+});
 
 
 
+// Grant permissions for Task-related Lambda functions
+tasksTable.grantReadData(getTaskByIdFn);  // Permissions to read task by ID
+tasksTable.grantReadData(getAllTasksFn);  // Permissions to read all tasks
+tasksTable.grantReadWriteData(newTaskFn);  // Permissions to create a new task
+tasksTable.grantReadWriteData(deleteTaskFn);  // Permissions to delete a task
 
+// Grant permissions for Project-related Lambda functions
+projectsTable.grantReadData(getProjectByIdFn);  // Permissions to read project by ID
+projectsTable.grantReadData(getAllProjectsFn);  // Permissions to read all projects
+projectsTable.grantReadWriteData(newProjectFn);  // Permissions to create a new project
+projectsTable.grantReadWriteData(deleteProjectFn);  // Permissions to delete a project
 
-    //  Functions .....
-    const getMovieCastMembersFn = new lambdanode.NodejsFunction(
-      this,
-      "GetCastMemberFn",
-      {
-        architecture: lambda.Architecture.ARM_64,
-        runtime: lambda.Runtime.NODEJS_22_X,
-        entry: `${__dirname}/../lambdas/getMovieCastMember.ts`,
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: {
-          TABLE_NAME: movieCastsTable.tableName,
-          REGION: "eu-west-1",
-        },
-      }
-    );
-
-        
-        // Permissions 
-        moviesTable.grantReadData(getMovieByIdFn)
-        moviesTable.grantReadData(getAllMoviesFn)
-        moviesTable.grantReadWriteData(newMovieFn)
-        moviesTable.grantReadWriteData(deleteMovieFn)
-        movieCastsTable.grantReadData(getMovieCastMembersFn);
-        movieCastsTable.grantReadData(getMovieByIdFn);
 
         
         // REST API 
@@ -159,36 +194,63 @@ export class RestAPIStack extends cdk.Stack {
       },
     });
 
-    // Movies endpoint
-    const moviesEndpoint = api.root.addResource("movies");
-    moviesEndpoint.addMethod(
-      "GET",
-      new apig.LambdaIntegration(getAllMoviesFn, { proxy: true })
-    );
-    // Detail movie endpoint
-    const specificMovieEndpoint = moviesEndpoint.addResource("{movieId}");
-    specificMovieEndpoint.addMethod(
-      "GET",
-      new apig.LambdaIntegration(getMovieByIdFn, { proxy: true })
-    );
+// Tasks endpoint
+const tasksEndpoint = api.root.addResource("tasks");
 
-    moviesEndpoint.addMethod(
-      "POST",
-      new apig.LambdaIntegration(newMovieFn, { proxy: true })
-    );
-
-    specificMovieEndpoint.addMethod(
-      "DELETE",
-      new apig.LambdaIntegration(deleteMovieFn, { proxy: true })
-    );
-    
-        
-    const movieCastEndpoint = moviesEndpoint.addResource("cast");
-
-movieCastEndpoint.addMethod(
-    "GET",
-    new apig.LambdaIntegration(getMovieCastMembersFn, { proxy: true })
+// Get all tasks
+tasksEndpoint.addMethod(
+  "GET",
+  new apig.LambdaIntegration(getAllTasksFn, { proxy: true })
 );
-      }
-    }
-    
+
+// Add a new task
+tasksEndpoint.addMethod(
+  "POST",
+  new apig.LambdaIntegration(newTaskFn, { proxy: true })
+);
+
+// Specific task endpoint by ID
+const specificTaskEndpoint = tasksEndpoint.addResource("{taskId}");
+
+// Get a specific task by ID
+specificTaskEndpoint.addMethod(
+  "GET",
+  new apig.LambdaIntegration(getTaskByIdFn, { proxy: true })
+);
+
+// Delete a task by ID
+specificTaskEndpoint.addMethod(
+  "DELETE",
+  new apig.LambdaIntegration(deleteTaskFn, { proxy: true })
+);
+
+// Projects endpoint
+const projectsEndpoint = api.root.addResource("projects");
+
+// Get all projects
+projectsEndpoint.addMethod(
+  "GET",
+  new apig.LambdaIntegration(getAllProjectsFn, { proxy: true })
+);
+
+// Add a new project
+projectsEndpoint.addMethod(
+  "POST",
+  new apig.LambdaIntegration(newProjectFn, { proxy: true })
+);
+
+// Specific project endpoint by ID
+const specificProjectEndpoint = projectsEndpoint.addResource("{projectId}");
+
+// Get a specific project by ID
+specificProjectEndpoint.addMethod(
+  "GET",
+  new apig.LambdaIntegration(getProjectByIdFn, { proxy: true })
+);
+
+// Delete a project by ID
+specificProjectEndpoint.addMethod(
+  "DELETE",
+  new apig.LambdaIntegration(deleteProjectFn, { proxy: true })
+);
+  }};
