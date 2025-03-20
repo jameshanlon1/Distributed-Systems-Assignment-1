@@ -1,33 +1,18 @@
-// export type Language = 'English' | 'Frenc
-
-export type Movie =   {
-  id: number,
-  backdrop_path: string,
-  genre_ids: number[ ],
-  original_language: string,
-  original_title: string,
-  adult: boolean,
-  overview: string,
-  popularity: number,
-  poster_path: string,
-  release_date: string,
-  title: string,
-  video: boolean,
-  vote_average: number,
-  vote_count: number
-}
-
-export type MovieCast = {
-  movieId: number;
-  actorName: string;
-  roleName: string;
-  roleDescription: string;
+// Define the Task type with necessary fields
+export type Task = {
+  taskId: string;
+  title: string;
+  description: string;
+  status: "pending" | "in-progress" | "completed";
+  createdAt: string;  // ISO date string
+  updatedAt?: string;  // ISO date string (optional)
+  dueDate?: string;  // ISO date string (optional)
+  priority: "low" | "medium" | "high";
 };
-// Used to validate the query string of HTTP Get requests
-export type MovieCastMemberQueryParams = {
-  movieId: string;
-  actorName?: string;
-  roleName?: string
-}
 
- 
+// Define a query parameter structure for filtering tasks
+export type TaskQueryParams = {
+  status?: string;
+  priority?: string;
+  dueDate?: string;  // ISO date string (optional)
+};
