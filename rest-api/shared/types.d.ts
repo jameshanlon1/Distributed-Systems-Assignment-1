@@ -1,16 +1,16 @@
 export type Task = {
-  taskId: string;
+  taskId: number;
   title: string;
   description: string;
   status: 'pending' | 'in-progress' | 'completed';
   createdAt: string;
   priority: 'low' | 'medium' | 'high';
   dueDate?: string; // optional
-  projectId: string; // reference to the Project entity
+  projectId: number; // reference to the Project entity
 };
 
 export type Project = {
-  projectId: string;
+  projectId: number;
   projectName: string;
   description: string;
   status: 'active' | 'completed' | 'archived';

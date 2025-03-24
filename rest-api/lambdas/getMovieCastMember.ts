@@ -1,5 +1,5 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { MovieCastMemberQueryParams } from "../shared/types";
+import { Project } from "../shared/types";  // Ensure this schema exists for Project
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -11,9 +11,9 @@ import schema from "../shared/types.schema.json";
 
 const ajv = new Ajv();
 const isValidQueryParams = ajv.compile(
-  schema.definitions["MovieCastMemberQueryParams"] || {}
+  schema.definitions["Project"] || {}  // Ensure this refers to Task schema
 );
- 
+
 const ddbDocClient = createDocumentClient();
 
 export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
@@ -37,77 +37,79 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         },
         body: JSON.stringify({
           message: `Incorrect type. Must match Query parameters schema`,
-          schema: schema.definitions["MovieCastMemberQueryParams"],
+          schema: schema.definitions["Project"],
         }),
       };
     }
     
-    const movieId = parseInt(queryParams.movieId);
+    const taskId = parseInt(queryParams.taskId); // Use taskId instead of movieId
     let commandInput: QueryCommandInput = {
-      TableName: process.env.TABLE_NAME,
+      TableName: process.env.TABLE_NAME, // TaskCast table
     };
+
+    // Adjust query depending on the parameters: roleName or actorName
     if ("roleName" in queryParams) {
       commandInput = {
         ...commandInput,
-        IndexName: "roleIx",
-        KeyConditionExpression: "movieId = :m and begins_with(roleName, :r) ",
+        IndexName: "roleIx", // Adjust the index name if needed
+        KeyConditionExpression: "taskId = :t and begins_with(roleName, :r) ",
         ExpressionAttributeValues: {
-          ":m": movieId,
+          ":t": taskId,
           ":r": queryParams.roleName,
         },
       };
     } else if ("actorName" in queryParams) {
       commandInput = {
         ...commandInput,
-        KeyConditionExpression: "movieId = :m and begins_with(actorName, :a) ",
+        KeyConditionExpression: "taskId = :t and begins_with(actorName, :a) ",
         ExpressionAttributeValues: {
-          ":m": movieId,
+          ":t": taskId,
           ":a": queryParams.actorName,
         },
       };
     } else {
       commandInput = {
         ...commandInput,
-        KeyConditionExpression: "movieId = :m",
+        KeyConditionExpression: "taskId = :t", // Default query based on taskId
         ExpressionAttributeValues: {
-          ":m": movieId,
+          ":t": taskId,
         },
       };
     }
     
     const commandOutput = await ddbDocClient.send(
       new QueryCommand(commandInput)
-      );
+    );
       
-      return {
-        statusCode: 200,
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          data: commandOutput.Items,
-        }),
-      };
-    } catch (error: any) {
-      console.log(JSON.stringify(error));
-      return {
-        statusCode: 500,
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ error }),
-      };
-    }
-  };
-  
-  function createDocumentClient() {
-    const ddbClient = new DynamoDBClient({ region: process.env.REGION });
-    const marshallOptions = {
-      convertEmptyValues: true,
-      removeUndefinedValues: true,
-      convertClassInstanceToMap: true,
+    return {
+      statusCode: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        data: commandOutput.Items,
+      }),
     };
-    const unmarshallOptions = {
+  } catch (error: any) {
+    console.log(JSON.stringify(error));
+    return {
+      statusCode: 500,
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ error }),
+    };
+  }
+};
+
+function createDocumentClient() {
+  const ddbClient = new DynamoDBClient({ region: process.env.REGION });
+  const marshallOptions = {
+    convertEmptyValues: true,
+    removeUndefinedValues: true,
+    convertClassInstanceToMap: true,
+  };
+  const unmarshallOptions = {
     wrapNumbers: false,
   };
   const translateConfig = { marshallOptions, unmarshallOptions };

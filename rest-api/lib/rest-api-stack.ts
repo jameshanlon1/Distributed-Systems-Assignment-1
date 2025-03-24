@@ -17,23 +17,24 @@ export class RestAPIStack extends cdk.Stack {
 // Tables
 const tasksTable = new dynamodb.Table(this, "TasksTable", {
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  partitionKey: { name: "taskId", type: dynamodb.AttributeType.STRING }, // Using taskId as partition key
+  partitionKey: { name: "taskId", type: dynamodb.AttributeType.NUMBER }, // Using taskId as partition key
   removalPolicy: cdk.RemovalPolicy.DESTROY, // Ensures the table is destroyed when the stack is deleted
   tableName: "Tasks", // Set the table name to "Tasks"
 });
 
 const projectsTable = new dynamodb.Table(this, "ProjectsTable", {
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  partitionKey: { name: "projectId", type: dynamodb.AttributeType.STRING }, // Using projectId as partition key
+  partitionKey: { name: "projectId", type: dynamodb.AttributeType.NUMBER }, // Using projectId as partition key
+  sortKey: { name: "projectName", type: dynamodb.AttributeType.STRING },
   removalPolicy: cdk.RemovalPolicy.DESTROY, // Ensures the table is destroyed when the stack is deleted
   tableName: "Projects", // Set the table name to "Projects"
 });
 
-// Optional: Add a Local Secondary Index (LSI) for the Tasks table if you need querying by priority (example)
-tasksTable.addLocalSecondaryIndex({
-  indexName: "priorityIx", 
-  sortKey: { name: "priority", type: dynamodb.AttributeType.STRING }, // Allows querying tasks by priority
-});
+// // Optional: Add a Local Secondary Index (LSI) for the Tasks table if you need querying by priority (example)
+// tasksTable.addLocalSecondaryIndex({
+//   indexName: "priorityIx", 
+//   sortKey: { name: "priority", type: dynamodb.AttributeType.STRING }, // Allows querying tasks by priority
+// });
 
 
 
@@ -52,19 +53,6 @@ tasksTable.addLocalSecondaryIndex({
             REGION: 'eu-west-1',
           },
         });
-        
-          // Lambda function to get a Project by its ID
-          const getProjectByIdFn = new lambdanode.NodejsFunction(this, "GetProjectByIdFn", {
-            architecture: lambda.Architecture.ARM_64,
-            runtime: lambda.Runtime.NODEJS_18_X,
-            entry: `${__dirname}/../lambdas/getProjectById.ts`, // Path to your Lambda function code
-            timeout: cdk.Duration.seconds(10),
-            memorySize: 128,
-            environment: {
-              TABLE_NAME: projectsTable.tableName, // Use the Projects table
-              REGION: 'eu-west-1',
-            },
-          });
 
 
      // Lambda function to delete a Task by its ID
@@ -80,18 +68,7 @@ const deleteTaskFn = new lambdanode.NodejsFunction(this, "DeleteTaskFn", {
   },
 });
 
-// Lambda function to delete a Project by its ID
-const deleteProjectFn = new lambdanode.NodejsFunction(this, "DeleteProjectFn", {
-  architecture: lambda.Architecture.ARM_64,
-  runtime: lambda.Runtime.NODEJS_18_X,
-  entry: `${__dirname}/../lambdas/deleteProject.ts`, // Path to your Lambda function code
-  timeout: cdk.Duration.seconds(10),
-  memorySize: 128,
-  environment: {
-    TABLE_NAME: projectsTable.tableName, // Use the Projects table
-    REGION: 'eu-west-1',
-  },
-});
+
       
 // Lambda function to get all Tasks
 const getAllTasksFn = new lambdanode.NodejsFunction(this, "GetAllTasksFn", {
@@ -106,18 +83,6 @@ const getAllTasksFn = new lambdanode.NodejsFunction(this, "GetAllTasksFn", {
   },
 });
 
-// Lambda function to get all Projects
-const getAllProjectsFn = new lambdanode.NodejsFunction(this, "GetAllProjectsFn", {
-  architecture: lambda.Architecture.ARM_64,
-  runtime: lambda.Runtime.NODEJS_18_X,
-  entry: `${__dirname}/../lambdas/getAllProjects.ts`, // Path to your Lambda function code
-  timeout: cdk.Duration.seconds(10),
-  memorySize: 128,
-  environment: {
-    TABLE_NAME: projectsTable.tableName, // Use the Projects table
-    REGION: 'eu-west-1',
-  },
-});
         
 new custom.AwsCustomResource(this, "tasksddbInitData", {
   onCreate: {
@@ -151,18 +116,6 @@ const newTaskFn = new lambdanode.NodejsFunction(this, "AddTaskFn", {
   },
 });
 
-// Lambda function to add a new Project
-const newProjectFn = new lambdanode.NodejsFunction(this, "AddProjectFn", {
-  architecture: lambda.Architecture.ARM_64,
-  runtime: lambda.Runtime.NODEJS_18_X,  // Using Node.js 18.x (you can adjust to Node.js 22.x if needed)
-  entry: `${__dirname}/../lambdas/addProject.ts`, // Path to the Lambda function code
-  timeout: cdk.Duration.seconds(10),
-  memorySize: 128,
-  environment: {
-    TABLE_NAME: projectsTable.tableName, // Use the Projects table
-    REGION: 'eu-west-1',
-  },
-});
 
 
 
@@ -172,17 +125,12 @@ tasksTable.grantReadData(getAllTasksFn);  // Permissions to read all tasks
 tasksTable.grantReadWriteData(newTaskFn);  // Permissions to create a new task
 tasksTable.grantReadWriteData(deleteTaskFn);  // Permissions to delete a task
 
-// Grant permissions for Project-related Lambda functions
-projectsTable.grantReadData(getProjectByIdFn);  // Permissions to read project by ID
-projectsTable.grantReadData(getAllProjectsFn);  // Permissions to read all projects
-projectsTable.grantReadWriteData(newProjectFn);  // Permissions to create a new project
-projectsTable.grantReadWriteData(deleteProjectFn);  // Permissions to delete a project
 
 
         
         // REST API 
-    const api = new apig.RestApi(this, "RestAPI", {
-      description: "demo api",
+    const api = new apig.RestApi(this, "RestAPI-Assigment", {
+      description: "Assignment api",
       deployOptions: {
         stageName: "dev",
       },
@@ -223,34 +171,5 @@ specificTaskEndpoint.addMethod(
   "DELETE",
   new apig.LambdaIntegration(deleteTaskFn, { proxy: true })
 );
-
-// Projects endpoint
-const projectsEndpoint = api.root.addResource("projects");
-
-// Get all projects
-projectsEndpoint.addMethod(
-  "GET",
-  new apig.LambdaIntegration(getAllProjectsFn, { proxy: true })
-);
-
-// Add a new project
-projectsEndpoint.addMethod(
-  "POST",
-  new apig.LambdaIntegration(newProjectFn, { proxy: true })
-);
-
-// Specific project endpoint by ID
-const specificProjectEndpoint = projectsEndpoint.addResource("{projectId}");
-
-// Get a specific project by ID
-specificProjectEndpoint.addMethod(
-  "GET",
-  new apig.LambdaIntegration(getProjectByIdFn, { proxy: true })
-);
-
-// Delete a project by ID
-specificProjectEndpoint.addMethod(
-  "DELETE",
-  new apig.LambdaIntegration(deleteProjectFn, { proxy: true })
-);
+  
   }};
