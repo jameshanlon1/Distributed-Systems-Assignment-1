@@ -29,15 +29,6 @@ const projectsTable = new dynamodb.Table(this, "ProjectsTable", {
   removalPolicy: cdk.RemovalPolicy.DESTROY, // Ensures the table is destroyed when the stack is deleted
   tableName: "Projects", // Set the table name to "Projects"
 });
-
-// // Optional: Add a Local Secondary Index (LSI) for the Tasks table if you need querying by priority (example)
-// tasksTable.addLocalSecondaryIndex({
-//   indexName: "priorityIx", 
-//   sortKey: { name: "priority", type: dynamodb.AttributeType.STRING }, // Allows querying tasks by priority
-// });
-
-
-
     
         // Functions
 
@@ -106,7 +97,7 @@ new custom.AwsCustomResource(this, "tasksddbInitData", {
 // Lambda function to add a new Task
 const newTaskFn = new lambdanode.NodejsFunction(this, "AddTaskFn", {
   architecture: lambda.Architecture.ARM_64,
-  runtime: lambda.Runtime.NODEJS_18_X,  // Using Node.js 18.x (you can adjust to Node.js 22.x if needed)
+  runtime: lambda.Runtime.NODEJS_18_X,  
   entry: `${__dirname}/../lambdas/addTask.ts`, // Path to the Lambda function code
   timeout: cdk.Duration.seconds(10),
   memorySize: 128,
@@ -119,7 +110,7 @@ const newTaskFn = new lambdanode.NodejsFunction(this, "AddTaskFn", {
 // Lambda function to update a new Task
 const updateTaskFn = new lambdanode.NodejsFunction(this, "UpdateTaskFn", {
   architecture: lambda.Architecture.ARM_64,
-  runtime: lambda.Runtime.NODEJS_18_X,  // Using Node.js 18.x (you can adjust to Node.js 22.x if needed)
+  runtime: lambda.Runtime.NODEJS_18_X,  
   entry: `${__dirname}/../lambdas/updateTask.ts`, // Path to the Lambda function code
   timeout: cdk.Duration.seconds(10),
   memorySize: 128,

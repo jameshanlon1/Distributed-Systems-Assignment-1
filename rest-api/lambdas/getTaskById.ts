@@ -27,7 +27,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const commandOutput = await ddbDocClient.send(
       new GetCommand({
         TableName: process.env.TABLE_NAME,
-        Key: { taskId: taskId }, // ✅ Fix: Use correct key
+        Key: { taskId: taskId }, 
       })
     );
 
@@ -67,8 +67,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 async function fetchTaskCast(taskId: number) {
   const commandOutput = await ddbDocClient.send(
     new GetCommand({
-      TableName: process.env.CAST_TABLE_NAME,  // Ensure this env var is set
-      Key: { taskId: taskId }, // ✅ Fix: Use correct key
+      TableName: process.env.CAST_TABLE_NAME,  
+      Key: { taskId: taskId }, 
     })
   );
   return commandOutput.Item ? commandOutput.Item.cast : [];

@@ -48,7 +48,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
       ":priority": body.priority,
       ":status": body.status,
       ":projectId": body.projectId,
-      ":dueDate": body.dueDate || null // if dueDate is optional, handle it correctly
+      ":dueDate": body.dueDate || null 
     };
 
     const commandOutput = await ddbDocClient.send(
@@ -58,7 +58,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         UpdateExpression: updateExpression,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
-        ReturnValues: "ALL_NEW" // To return the updated item
+        ReturnValues: "ALL_NEW" 
       })
     );
 
