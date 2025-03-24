@@ -1,86 +1,96 @@
 ## Serverless REST Assignment - Distributed Systems.
 
-__Name:__ ....your name .....
+__Name:__ James Hanlon
 
 __Demo:__ ... link to your YouTube video demonstration ......
 
 ### Context.
 
-State the context you chose for your web API and detail the attributes of the DynamoDB table items, e.g.
+For this web API, I have built a **Task Management API** that allows for managing tasks within a project. The API supports creating, retrieving, updating, and deleting tasks. The underlying database is DynamoDB, and the API uses serverless technologies, including AWS Lambda and API Gateway, to handle requests.
 
-Context: Movie Cast
-
-Table item attributes:
-+ MovieID - number  (Partition key)
-+ ActorID - number  (Sort Key)
-+ RoleName - string
-+ RoleDescription - string
-+ AwardsWon - List<string>
-+ etc
+**Table item attributes for the `Task` table**:
+- **taskId** - number (Partition key): The unique identifier for each task.
+- **projectId** - number: The identifier of the project to which the task belongs.
+- **title** - string: The title or name of the task.
+- **description** - string: A detailed description of the task.
+- **priority** - string (Enum: `high`, `medium`, `low`): The priority level of the task.
+- **status** - string (Enum: `pending`, `in-progress`, `completed`): The current status of the task.
+- **dueDate** - string: The due date of the task.
+- **createdAt** - string: The timestamp when the task was created.
 
 ### App API endpoints.
+The following endpoints have been implemented:
 
-[ Provide a bullet-point list of the app's endpoints (excluding the Auth API) you have successfully implemented. ]
-e.g.
- 
-+ POST /thing - add a new 'thing'.
-+ GET /thing/{partition-key}/ - Get all the 'things' with a specified partition key.
-+ GEtT/thing/{partition-key}?attributeX=value - Get all the 'things' with a specified partition key value and its attributeX satisfying the condition .....
-+ etc
+- **POST /task** - Adds a new task to the database. (Requires an API key for authentication).
+- **GET /task/{taskId}** - Retrieves a specific task by `taskId`.
+- **GET /task/{taskId}?includeCast=true** - Retrieves the task and includes the cast information if available.
+- **GET /tasks/{projectId}** - Retrieves all tasks associated with a specific `projectId`.
+- **GET /tasks/{projectId}?status={status}** - Retrieves all tasks for a project filtered by task status (e.g., `pending`, `in-progress`).
+- **PUT /task/{taskId}** - Updates an existing task by `taskId`. This includes fields like `status`, `priority`, `dueDate`, etc. (Requires an API key for authentication).
+
 
 
 ### Features.
 
-#### Translation persistence (if completed)
+#### Translation persistence (not completed)
 
-[ Explain briefly your solution to the translation persistence requirement - no code excerpts required. Show the structure of a table item that includes review translations, e.g.
 
-+ MovieID - number  (Partition key)
-+ ActorID - number  (Sort Key)
-+ RoleName - string
-+ RoleDescription - string
-+ AwardsWon - List<string>
-+ Translations - ?
-]
+#### Custom L2 Construct (not completed)
 
-#### Custom L2 Construct (if completed)
 
-[State briefly the infrastructure provisioned by your custom L2 construct. Show the structure of its input props object and list the public properties it exposes, e.g. taken from the Cognito lab,
+#### Multi-Stack app (not completed)
 
-Construct Input props object:
-~~~
-type AuthApiProps = {
- userPoolId: string;
- userPoolClientId: string;
-}
-~~~
-Construct public properties
-~~~
-export class MyConstruct extends Construct {
- public  PropertyName: type
- etc.
-~~~
- ]
 
-#### Multi-Stack app (if completed)
+#### Lambda Layers (not completed)
 
-[Explain briefly the stack composition of your app - no code excerpts required.]
-
-#### Lambda Layers (if completed)
-
-[Explain briefly where you used the Layers feature of the AWS Lambda service - no code excerpts required.]
 
 
 #### API Keys. (if completed)
 
-[Explain briefly how to implement API key authentication to protect API Gateway endpoints. Include code excerpts from your app to support this. ][]
+To secure the `POST` and `PUT` endpoints, API key authentication is used in the API Gateway. This ensures that only requests with the correct API key can interact with the endpoints. I use this website https://conermurphy.com/blog/build-rest-api-aws-cdk-api-gateway-lambda-dynamodb-api-key-authentication/ to help me understand how to setup rest API keys for endpoints. Below is the code implementation for setting up API keys and securing specific endpoints:
 
 ~~~ts
-// This is a code excerpt markdown 
-let foo : string = 'Foo'
-console.log(foo)
+// REST API
+const api = new apig.RestApi(this, "RestAPI-Assigment", {
+  description: "Assignment API",
+  deployOptions: {
+    stageName: "dev",
+  },
+  defaultCorsPreflightOptions: {
+    allowHeaders: ["Content-Type", "X-Amz-Date"],
+    allowMethods: ["OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowCredentials: true,
+    allowOrigins: ["*"],
+  },
+});
+
+// API Key (to secure POST and PUT)
+const apiKey = api.addApiKey("ApiKey", {
+  description: "API Key for protected endpoints",
+});
+
+// Create a usage plan and add the API key to it
+const usagePlan = api.addUsagePlan("UsagePlan", {
+  name: 'Usage Plan',
+  apiStages: [
+    {
+      stage: api.deploymentStage,
+    },
+  ],
+});
+
+// Update a task - Secure this method with API Key
+specificTaskEndpoint.addMethod(
+  "PUT",
+  new apig.LambdaIntegration(updateTaskFn), 
+  { apiKeyRequired: true }
+);
+
+// Add a new task - Secure this method with API Key
+tasksEndpoint.addMethod(
+  "POST",
+  new apig.LambdaIntegration(newTaskFn), 
+  { apiKeyRequired: true }
+);
 ~~~
 
-###  Extra (If relevant).
-
-[ State any other aspects of your solution that use CDK/serverless features not covered in the lectures ]
