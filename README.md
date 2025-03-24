@@ -23,10 +23,9 @@ The following endpoints have been implemented:
 
 - **POST /task** - Adds a new task to the database. (Requires an API key for authentication).
 - **GET /task/{taskId}** - Retrieves a specific task by `taskId`.
-- **GET /task/{taskId}?includeCast=true** - Retrieves the task and includes the cast information if available.
-- **GET /tasks/{projectId}** - Retrieves all tasks associated with a specific `projectId`.
-- **GET /tasks/{projectId}?status={status}** - Retrieves all tasks for a project filtered by task status (e.g., `pending`, `in-progress`).
+- **GET /task - Retrieves all tasks.
 - **PUT /task/{taskId}** - Updates an existing task by `taskId`. This includes fields like `status`, `priority`, `dueDate`, etc. (Requires an API key for authentication).
+- **Delete /task/{taskId}** - Deletes the task by task ID.
 
 
 
@@ -47,7 +46,7 @@ The following endpoints have been implemented:
 
 #### API Keys. (if completed)
 
-To secure the `POST` and `PUT` endpoints, API key authentication is used in the API Gateway. This ensures that only requests with the correct API key can interact with the endpoints. I use this website https://conermurphy.com/blog/build-rest-api-aws-cdk-api-gateway-lambda-dynamodb-api-key-authentication/ to help me understand how to setup rest API keys for endpoints. Below is the code implementation for setting up API keys and securing specific endpoints:
+To secure the `POST` and `PUT` endpoints, API key authentication is used in the API Gateway. This ensures that only requests with the correct API key can interact with the endpoints. I use this website https://conermurphy.com/blog/build-rest-api-aws-cdk-api-gateway-lambda-dynamodb-api-key-authentication/ to help me understand how to setup rest API keys for endpoints. For this I use the apiKeyRequired to be true to ensure the endpoint had to use the API key. Below is the code implementation for setting up API keys and securing specific endpoints:
 
 ~~~ts
 // REST API
