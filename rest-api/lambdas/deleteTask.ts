@@ -27,7 +27,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     await ddbDocClient.send(
       new DeleteCommand({
         TableName: process.env.TABLE_NAME!,  // Ensure the table name is correctly set in your environment variables
-        Key: { id: taskId },  // Make sure the key matches the primary key in DynamoDB (here assuming it's 'id')
+        Key: { taskId: taskId },  // Make sure the key matches the primary key in DynamoDB (here assuming it's 'id')
       })
     );
 

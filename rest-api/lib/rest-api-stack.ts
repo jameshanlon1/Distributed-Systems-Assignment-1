@@ -116,15 +116,28 @@ const newTaskFn = new lambdanode.NodejsFunction(this, "AddTaskFn", {
   },
 });
 
+// Lambda function to update a new Task
+const updateTaskFn = new lambdanode.NodejsFunction(this, "UpdateTaskFn", {
+  architecture: lambda.Architecture.ARM_64,
+  runtime: lambda.Runtime.NODEJS_18_X,  // Using Node.js 18.x (you can adjust to Node.js 22.x if needed)
+  entry: `${__dirname}/../lambdas/updateTask.ts`, // Path to the Lambda function code
+  timeout: cdk.Duration.seconds(10),
+  memorySize: 128,
+  environment: {
+    TABLE_NAME: tasksTable.tableName, // Use the Tasks table
+    REGION: 'eu-west-1',
+  },
+});
+
 
 
 
 // Grant permissions for Task-related Lambda functions
-tasksTable.grantReadData(getTaskByIdFn);  // Permissions to read task by ID
-tasksTable.grantReadData(getAllTasksFn);  // Permissions to read all tasks
-tasksTable.grantReadWriteData(newTaskFn);  // Permissions to create a new task
-tasksTable.grantReadWriteData(deleteTaskFn);  // Permissions to delete a task
-
+tasksTable.grantReadData(getTaskByIdFn); 
+tasksTable.grantReadData(getAllTasksFn);
+tasksTable.grantReadWriteData(newTaskFn);  
+tasksTable.grantReadWriteData(deleteTaskFn); 
+tasksTable.grantReadWriteData(updateTaskFn);
 
 
         
@@ -157,6 +170,9 @@ tasksEndpoint.addMethod(
   new apig.LambdaIntegration(newTaskFn, { proxy: true })
 );
 
+
+
+
 // Specific task endpoint by ID
 const specificTaskEndpoint = tasksEndpoint.addResource("{taskId}");
 
@@ -170,6 +186,12 @@ specificTaskEndpoint.addMethod(
 specificTaskEndpoint.addMethod(
   "DELETE",
   new apig.LambdaIntegration(deleteTaskFn, { proxy: true })
+);
+
+// Update a task
+specificTaskEndpoint.addMethod(
+  "PUT",
+  new apig.LambdaIntegration(updateTaskFn, { proxy: true })
 );
   
   }};
