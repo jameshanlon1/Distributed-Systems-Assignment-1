@@ -130,8 +130,6 @@ const updateTaskFn = new lambdanode.NodejsFunction(this, "UpdateTaskFn", {
 });
 
 
-
-
 // Grant permissions for Task-related Lambda functions
 tasksTable.grantReadData(getTaskByIdFn); 
 tasksTable.grantReadData(getAllTasksFn);
@@ -155,8 +153,29 @@ tasksTable.grantReadWriteData(updateTaskFn);
       },
     });
 
+
+    // API Key (to secure POST and PUT)
+const apiKey = api.addApiKey("ApiKey", {
+  description: "API Key for protected endpoints",
+});
+
+// 4. Create a usage plan and add the API key to it
+const usagePlan = api.addUsagePlan("UsagePlan", {
+  name: 'Usage Plan',
+  apiStages: [
+    {
+      stage: api.deploymentStage,
+    },
+  ],
+});
+
+// Attach the API Key to the Usage Plan
+usagePlan.addApiKey(apiKey);
+
 // Tasks endpoint
 const tasksEndpoint = api.root.addResource("tasks");
+
+
 
 // Get all tasks
 tasksEndpoint.addMethod(
@@ -167,7 +186,7 @@ tasksEndpoint.addMethod(
 // Add a new task
 tasksEndpoint.addMethod(
   "POST",
-  new apig.LambdaIntegration(newTaskFn, { proxy: true })
+  new apig.LambdaIntegration(newTaskFn), { apiKeyRequired: true }
 );
 
 
@@ -191,7 +210,7 @@ specificTaskEndpoint.addMethod(
 // Update a task
 specificTaskEndpoint.addMethod(
   "PUT",
-  new apig.LambdaIntegration(updateTaskFn, { proxy: true })
+  new apig.LambdaIntegration(updateTaskFn), { apiKeyRequired: true }
 );
   
   }};
